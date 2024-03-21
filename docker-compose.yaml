@@ -1,0 +1,13 @@
+version: "3"
+
+services:
+  aio-monitor:
+    container_name: aio-monitor
+    hostname: aio-monitor
+    build: ./
+    ports:
+      - 8000:8000
+    volumes:
+      - ./config.yaml:/app/config.yaml
+      - ./logs:/app/logs
+    restart: always

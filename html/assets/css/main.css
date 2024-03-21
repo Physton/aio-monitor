@@ -1,0 +1,29 @@
+* {
+    font-family: Helvetica, Tahoma, Arial, STXihei, "华文细黑", Heiti, "黑体", "Microsoft YaHei", "微软雅黑", SimSun, "宋体", sans-serif
+}
+
+body {
+    /*background-image: url(https://pic3.zhimg.com/v2-f9e2540b840f54ab8a0d6e0150d770e2_r.jpg);*/
+    overflow-x: hidden;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-size: 100% 100%;
+    /*backdrop-filter: blur(2px);*/
+}
+
+#fullscreen-button {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 999;
+    cursor: pointer;
+}
+
+#fullscreen-button svg {
+    width: 25px;
+    height: 25px;
+}
+
+#fullscreen-button svg:hover {
+    transform: scale(1.1);
+}

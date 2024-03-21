@@ -1,0 +1,126 @@
+# web 服务
+# 监听IP
+app_host: 0.0.0.0
+# 监听端口
+app_port: 8000
+# 加密密钥，随机字符串，可以不用修改
+app_secret: AUrHeK3m0tXXcfUthi8yjrnXiqGHNeoC
+# 登陆过期时间，单位秒
+app_expire: 31536000
+# 用户名
+app_username: admin
+# 密码
+app_password: 123456
+# 网页背景，相对于 html 目录下的路径。也可以是网络图片地址。为空则无背景图片
+# app_background_image: https://pic3.zhimg.com/v2-f9e2540b840f54ab8a0d6e0150d770e2_r.jpg
+app_background_image: ./assets/image/background.jpg
+# 背景模糊度，值越大越模糊，为空或者0为不模糊
+app_background_blur: 2
+# 网页卡片背景颜色，可以为 rgb、rgba、十六进制等CSS颜色。这里的演示中的0.8代表80%透明度。如果为1，则代表不透明
+app_card_background_color: rgba(64, 75, 105, 0.8)
+
+# 网络服务列表
+addresses:
+  # - name: 服务名称
+  #   local: 本地IP/域名
+  #   local_port: 本地端口
+  #   public: 公网/IP域名
+  #   public_port: 公网端口
+
+  - name: iKuai
+    local: 192.168.31.1
+    local_port: 80
+    public: example.com
+    public_port: 8000
+
+  - name: PVE
+    local: 192.168.31.5
+    local_port: 8006
+    public: example.com
+    public_port: 8006
+
+  - name: OpenWrt
+    local: 192.168.31.6
+    local_port: 80
+    public: example.com
+    public_port: 8001
+
+  - name: Jellyfin
+    local: 192.168.31.30
+    local_port: 8096
+    public: example.com
+    public_port: 8096
+
+  - name: Windows11
+    local: 192.168.31.10
+    local_port: 3389
+    public: example.com
+    public_port: 3389
+
+  - name: DSM
+    local: 192.168.31.20
+    local_port: 5000
+    public: example.com
+    public_port: 5000
+
+
+# 通过 pve api 的方式，读取CPU、内存信息、使用率信息、虚拟机列表
+pve_web:
+  host: example.com
+  port: 8006
+  username: root@pam
+  password: 123456
+
+
+# 通过 pve ssh 的方式，执行命令，读取cpu风扇转速、磁盘风扇转速、温度等信息
+pve_ssh:
+  host: example.com
+  port: 22
+  username: root
+  password: 123456
+
+  # 进入 pve ssh，执行命令 sensors -j，取实际的键名
+  disk_fan: nct6798-isa-0a20.fan1.fan1_input
+  cpu_fan: nct6798-isa-0a20.fan2.fan2_input
+  cpu_temp: coretemp-isa-0000.Package id 0.temp1_input
+  nvme_temp: nvme-pci-0300.Composite.temp1_input
+
+
+# 通过群晖 api 的方式，读取存储设备列表
+dsm:
+  host: example.com
+  port: 5000
+  username: admin
+  password: 123456
+
+
+# 通过 homeassistant api 的方式，读取传感器值
+homeassistant:
+  address: http://example.com:8123
+
+  # token: 个人头像 -> 长期访问令牌 -> 创建令牌
+  token: xxxxxx
+
+  # pve_power_sensor_id: 指定 PVE 的电源传感器，获取 PVE 所属物理机的总功耗
+  pve_power_sensor_id: sensor.chuangmi_212a01_67ff_electric_power
+
+  # sensor id: 配置 -> 设备与服务 -> 实体注册表 -> 实体ID
+  sensors:
+    - title: 路由器运行时间
+      id: sensor.ikuai_uptime
+    - title: CPU占用
+      id: sensor.ikuai_cpu
+    - title: 内存占用
+      id: sensor.ikuai_memory
+    - title: 在线用户
+      id: sensor.ikuai_online_user
+    - title: 连接数
+      id: sensor.ikuai_connect_num
+    - title: 总上传流量
+      id: sensor.ikuai_totalup
+    - title: 总下载流量
+      id: sensor.ikuai_totaldown
+    - title: 上传流量
+      id: sensor.ikuai_upload
+    - title: 下载流量
+      id: sensor.ikuai_download
