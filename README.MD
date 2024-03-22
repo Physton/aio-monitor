@@ -87,7 +87,7 @@
         git clone https://github.com/Physton/aio-monitor.git
         ```
     - 方式二：手动下载：[aio-monitor.zip](https://github.com/Physton/aio-monitor/releases/latest/download/aio-monitor.zip) 并解压。
-3. 根据项目中的 [config.example.yaml](https://raw.githubusercontent.com/Physton/aio-monitor/main/config.example.yaml) 重命名为 `config.yaml`，根据文件中的注释说明，手动修改内容。
+3. 将项目中的 [config.example.yaml](https://raw.githubusercontent.com/Physton/aio-monitor/main/config.example.yaml) 重命名为 `config.yaml`，根据文件中的注释说明，手动修改内容。
 4. 打开系统命令行（终端），进入本项目目录
     ```bash
     cd aio-monitor
