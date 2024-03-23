@@ -1,4 +1,5 @@
 FROM python:3.10.11
+RUN apt-get update && apt-get install -y iputils-ping
 ADD . /app
 # 删除 venv
 RUN rm -rf /app/venv
