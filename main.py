@@ -226,14 +226,15 @@ class Main:
         richs['pve_cpu_temp_value'] = Panel("", title='[b]CPU温度[/b]', box=Box.SIMPLE)
         richs['pve_nvme_temp_value'] = Panel("", title='[b]M2温度[/b]', box=Box.SIMPLE)
 
+        layouts = []
+        if self.get_value(self.configs, 'homeassistant.sensors', []):
+            layouts.append(Layout(name="HomeAssistant", size=4))
+        layouts.append(Layout(name="ProxmoxVE", size=4))
+        layouts.append(Layout(name="ServiceList"))
+        layouts.append(Layout(name="QemuList"))
+        layouts.append(Layout(name="DiskList"))
         layout = Layout(name="root")
-        layout.split_column(
-            Layout(name="HomeAssistant", size=4),
-            Layout(name="ProxmoxVE", size=4),
-            Layout(name="ServiceList"),
-            Layout(name="QemuList"),
-            Layout(name="DiskList"),
-        )
+        layout.split_column(*layouts)
 
         with Live(layout, refresh_per_second=1, screen=True) as live:
             while not self.is_stop:

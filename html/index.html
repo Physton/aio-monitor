@@ -47,7 +47,7 @@
 
         <div v-if="!isShowLogin" class="container-fluid pt-0">
             <div class="row justify-content-between">
-                <div class="row col-lg-4 mt-4 justify-content-between">
+                <div class="row col-lg-4 mt-4 justify-content-between" v-if="data.homeassistant">
                     <h5 class="font-weight-bolder">Home Assistant</h5>
                     <div v-for="item in data.homeassistant" :key="item.id" class="col m-1 p-0">
                         <div class="card" :style="{backgroundColor: cardBackgroundColor}">
@@ -109,10 +109,8 @@
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="row justify-content-between">
-                <div class="row col-lg-5 mt-4 justify-content-between">
+                <div class="row col-lg-4 mt-4 justify-content-between">
                     <h5 class="font-weight-bolder">Proxmox VE 运行状态</h5>
                     <div v-for="item in pve" :key="item.title" class="col m-1 p-0">
                         <div class="card" :style="{backgroundColor: cardBackgroundColor}">
@@ -127,7 +125,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-7 mt-4" v-if="data.pve_qemus">
+                <div class="col-lg-8 mt-4" v-if="data.pve_qemus">
                     <h5 class="font-weight-bolder">虚拟机运行状态</h5>
                     <div class="card" :style="{backgroundColor: cardBackgroundColor}">
                         <div class="card-body p-1">
@@ -187,51 +185,51 @@
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="row mt-4" v-if="data.dsm_storage">
-                <h5 class="font-weight-bolder">DSM磁盘存储状态</h5>
-                <div class="card" :style="{backgroundColor: cardBackgroundColor}">
-                    <div class="card-body p-1">
-                        <div class="table-responsive p-0">
-                            <table class="table align-items-center mb-0">
-                                <thead>
-                                <tr>
-                                    <th class="p-1 px-1 text-center text-xxs font-weight-bolder">ID</th>
-                                    <th class="p-1 px-1 text-start text-xs font-weight-bolder">型号</th>
-                                    <th class="p-1 px-1 text-start text-xs font-weight-bolder">序列号</th>
-                                    <th class="p-1 px-1 text-end text-xs font-weight-bolder">容量</th>
-                                    <th class="p-1 px-1 text-end text-xs font-weight-bolder">温度</th>
-                                    <th class="p-1 px-1 text-end text-xs font-weight-bolder">读取</th>
-                                    <th class="p-1 px-1 text-end text-xs font-weight-bolder">写入</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                <tr v-for="(disk, index) in data.dsm_storage.data.disks" :key="index">
-                                    <td class="p-0 px-1 text-center">
-                                        <span class="text-sm text-white">{{ disk.id }}</span>
-                                    </td>
-                                    <td class="p-0 px-1 text-start">
-                                        <span class="text-sm text-white">{{ disk.model }}</span>
-                                    </td>
-                                    <td class="p-0 px-1 text-start">
-                                        <span class="text-sm text-white">{{ disk.serial }}</span>
-                                    </td>
-                                    <td class="p-0 px-1 text-end">
-                                        <span class="text-sm" :style="{color: disk.size_total_format.color}">{{ disk.size_total_format.value }} {{ disk.size_total_format.unit }}</span>
-                                    </td>
-                                    <td class="p-0 px-1 text-end">
-                                        <span class="text-sm" :style="{color: disk.temp_format.color}">{{disk.temp_format.value }} {{ disk.temp_format.unit }}</span>
-                                    </td>
-                                    <td class="p-0 px-1 text-end">
-                                        <span class="text-sm" :style="{color: disk.read_byte_format.color}">{{disk.read_byte_format.value }} {{ disk.read_byte_format.unit }}</span>
-                                    </td>
-                                    <td class="p-0 px-1 text-end">
-                                        <span class="text-sm" :style="{color: disk.write_byte_format.color}">{{disk.write_byte_format.value }} {{ disk.write_byte_format.unit }}</span>
-                                    </td>
-                                </tr>
-                                </tbody>
-                            </table>
+                <div class="col-lg-8 mt-4" v-if="data.dsm_storage">
+                    <h5 class="font-weight-bolder">DSM磁盘存储状态</h5>
+                    <div class="card" :style="{backgroundColor: cardBackgroundColor}">
+                        <div class="card-body p-1">
+                            <div class="table-responsive p-0">
+                                <table class="table align-items-center mb-0">
+                                    <thead>
+                                    <tr>
+                                        <th class="p-1 px-1 text-center text-xxs font-weight-bolder">ID</th>
+                                        <th class="p-1 px-1 text-start text-xs font-weight-bolder">型号</th>
+                                        <th class="p-1 px-1 text-start text-xs font-weight-bolder">序列号</th>
+                                        <th class="p-1 px-1 text-end text-xs font-weight-bolder">容量</th>
+                                        <th class="p-1 px-1 text-end text-xs font-weight-bolder">温度</th>
+                                        <th class="p-1 px-1 text-end text-xs font-weight-bolder">读取</th>
+                                        <th class="p-1 px-1 text-end text-xs font-weight-bolder">写入</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr v-for="(disk, index) in data.dsm_storage.data.disks" :key="index">
+                                        <td class="p-0 px-1 text-center">
+                                            <span class="text-sm text-white">{{ disk.id }}</span>
+                                        </td>
+                                        <td class="p-0 px-1 text-start">
+                                            <span class="text-sm text-white">{{ disk.model }}</span>
+                                        </td>
+                                        <td class="p-0 px-1 text-start">
+                                            <span class="text-sm text-white">{{ disk.serial }}</span>
+                                        </td>
+                                        <td class="p-0 px-1 text-end">
+                                            <span class="text-sm" :style="{color: disk.size_total_format.color}">{{ disk.size_total_format.value }} {{ disk.size_total_format.unit }}</span>
+                                        </td>
+                                        <td class="p-0 px-1 text-end">
+                                            <span class="text-sm" :style="{color: disk.temp_format.color}">{{disk.temp_format.value }} {{ disk.temp_format.unit }}</span>
+                                        </td>
+                                        <td class="p-0 px-1 text-end">
+                                            <span class="text-sm" :style="{color: disk.read_byte_format.color}">{{disk.read_byte_format.value }} {{ disk.read_byte_format.unit }}</span>
+                                        </td>
+                                        <td class="p-0 px-1 text-end">
+                                            <span class="text-sm" :style="{color: disk.write_byte_format.color}">{{disk.write_byte_format.value }} {{ disk.write_byte_format.unit }}</span>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
