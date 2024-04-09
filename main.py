@@ -777,7 +777,7 @@ class Main:
     def get_value(self, data, key, default=None):
         key = key.split('.')
         for k in key:
-            if k in data:
+            if k in data and data[k] is not None:
                 data = data[k]
             else:
                 return default
