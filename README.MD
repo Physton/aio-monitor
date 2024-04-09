@@ -19,12 +19,17 @@
 3. 监视 [Proxmox VE](https://www.proxmox.com/en/proxmox-virtual-environment/overview) CPU、内存、风扇、温度等信息。
 4. 监视 [Proxmox VE](https://www.proxmox.com/en/proxmox-virtual-environment/overview) 虚拟机状态。
 5. 监视 DSM 中磁盘状态。
+6. 监视 [OpenWrt](https://www.openwrt.org/) 软路由状态。
+
+> 如果不需要显示某项面板，可根据配置文件中的提示，删除其配置项。
 
 ## Demo
 - WEB
 ![](./screenshot/web.jpg)
 - WEB带背景
 ![](./screenshot/web2.jpg)
+- 新增 OpenWrt 软路由信息监控
+![](./screenshot/web3.jpg)
 - 终端
 ![](./screenshot/shell.png)
 
@@ -156,6 +161,12 @@
 | dsm.port | 数字 | 端口 | 5000 |
 | dsm.username | 文本 | 用户名 | username |
 | dsm.password | 文本 | 密码 | 123456 |
+| op_ssh | 字典 | OpenWrt SSH 信息。通过 openwrt ssh 的方式，执行命令，获取信息。 | |
+| op_ssh.host | 文本 | IP/域名 | 127.0.0.1 |
+| op_ssh.port | 数字 | SSH端口 | 22 |
+| op_ssh.username | 文本 | 用户名 | root |
+| op_ssh.password | 文本 | 密码 | 123456 |
+| op_ssh.cpu_temp | 文本 | CPU温度传感器。进入 openwrt ssh，执行命令 sensors -j，取实际的键名。子节点用英文句号分隔 | coretemp-isa-0000.Package id 0.temp1_input |
 | homeassistant | 字典 | Home Assistant 信息。用于通过 api 的方式，读取传感器值。 | |
 | homeassistant.address | 文本 | 网址 | http://example.com:8123 |
 | homeassistant.token | 文本 | API 令牌。个人头像 -> 长期访问令牌 -> 创建令牌 | xxxxxx |

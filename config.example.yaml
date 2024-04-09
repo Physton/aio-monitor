@@ -20,6 +20,7 @@ app_background_blur: 2
 app_card_background_color: rgba(64, 75, 105, 0.8)
 
 # 网络服务列表
+# 如果不需要显示服务列表，可以将这个配置项删除
 addresses:
   # - name: 服务名称
   #   local: 本地IP/域名
@@ -65,6 +66,7 @@ addresses:
 
 
 # 通过 pve api 的方式，读取CPU、内存信息、使用率信息、虚拟机列表
+# 如果不需要显示 PVE 信息，可以将这个配置项删除，同时删除 pve_ssh 配置
 pve_web:
   host: example.com
   port: 8006
@@ -73,6 +75,7 @@ pve_web:
 
 
 # 通过 pve ssh 的方式，执行命令，读取cpu风扇转速、磁盘风扇转速、温度等信息
+# 如果不需要显示 PVE 信息，可以将这个配置项删除，同时删除 pve_web 配置
 pve_ssh:
   host: example.com
   port: 22
@@ -87,11 +90,24 @@ pve_ssh:
 
 
 # 通过群晖 api 的方式，读取存储设备列表
+# 如果不需要显示群晖信息，可以将这个配置项删除
 dsm:
   host: example.com
   port: 5000
   username: admin
   password: 123456
+
+
+# 通过 openwrt ssh 的方式，执行命令，获取信息
+# 如果不需要显示 OpenWrt 信息，可以将这个配置项删除
+op_ssh:
+  host: example.com
+  port: 22
+  username: root
+  password: 123456
+
+  # 进入 pve ssh，执行命令 sensors -j，取实际的键名
+  cpu_temp: coretemp-isa-0000.Package id 0.temp1_input
 
 
 # 通过 homeassistant api 的方式，读取传感器值
@@ -102,9 +118,11 @@ homeassistant:
   token: xxxxxx
 
   # pve_power_sensor_id: 指定 PVE 的电源传感器，获取 PVE 所属物理机的总功耗
+  # 如果不需要显示功耗信息，可以将这个配置项删除
   pve_power_sensor_id: sensor.chuangmi_212a01_67ff_electric_power
 
   # sensor id: 配置 -> 设备与服务 -> 实体注册表 -> 实体ID
+  # 如果不需要显示 homeassistant 传感器信息，可以将这个配置项删除
   sensors:
     - title: 路由器运行时间
       id: sensor.ikuai_uptime

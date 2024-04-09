@@ -10,7 +10,7 @@
     <meta name="email" content="physton@163.com">
     <link href="./assets/sample-bootstrap5-dark-mode/assets/css/soft-ui-dashboard.min.css" rel="stylesheet">
     <link href="./assets/sample-bootstrap5-dark-mode/assets/css/dark-theme-core.css" rel="stylesheet">
-    <link href="./assets/css/main.css" rel="stylesheet">
+    <link href="./assets/css/main.css?001" rel="stylesheet">
 </head>
 <body class="g-sidenav-show dark-page" >
 
@@ -46,23 +46,62 @@
         </div>
 
         <div v-if="!isShowLogin" class="container-fluid pt-0">
-            <div class="row justify-content-between">
-                <div class="row col-lg-4 mt-4 justify-content-between" v-if="data.homeassistant && data.homeassistant.length">
-                    <h5 class="font-weight-bolder">Home Assistant</h5>
-                    <div v-for="item in data.homeassistant" :key="item.id" class="col m-1 p-0">
-                        <div class="card" :style="{backgroundColor: cardBackgroundColor}">
-                            <div class="card-body p-2 text-center">
-                                <h6 class="text-sm mb-0 text-capitalize text-nowrap font-weight-bold">{{ item.title }}</h6>
-                                <hr class="horizontal dark my-1">
-                                <div class="font-weight-bolder mb-0 text-nowrap text-base">
-                                    {{ item.value }}
-                                    <span class="text-sm" v-if="item.unit">{{ item.unit }}</span>
+            <div class="grid-container">
+                <div class="grid-item gird-40" v-if="data.homeassistant_enabled">
+                    <div class="row justify-content-between">
+                        <h5 class="font-weight-bolder">Home Assistant</h5>
+                        <div v-for="item in data.homeassistant" :key="item.id" class="col m-1 p-0">
+                            <div class="card" :style="{backgroundColor: cardBackgroundColor}">
+                                <div class="card-body p-2 text-center">
+                                    <h6 class="text-sm mb-0 text-capitalize text-nowrap font-weight-bold">{{ item.title }}</h6>
+                                    <hr class="horizontal dark my-1">
+                                    <div class="font-weight-bolder mb-0 text-nowrap text-base">
+                                        {{ item.value }}
+                                        <span class="text-sm" v-if="item.unit">{{ item.unit }}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-8 mt-4" v-if="data.addresses">
+
+                <div class="grid-item gird-40" v-if="data.openwrt_enabled">
+                    <div class="row justify-content-between">
+                        <h5 class="font-weight-bolder">OpenWrt 运行状态</h5>
+                        <div v-for="item in op" :key="item.title" class="col m-1 p-0">
+                            <div class="card" :style="{backgroundColor: cardBackgroundColor}">
+                                <div class="card-body p-2 text-center">
+                                    <h6 class="text-sm mb-0 text-capitalize text-nowrap font-weight-bold">{{ item.title }}</h6>
+                                    <hr class="horizontal dark my-1">
+                                    <div class="font-weight-bolder mb-0 text-nowrap text-base" :style="{color: item.color}">
+                                        {{ item.value }}
+                                        <span class="text-sm" v-if="item.unit">{{ item.unit }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid-item gird-40" v-if="data.pve_enabled">
+                    <div class="row justify-content-between">
+                        <h5 class="font-weight-bolder">Proxmox VE 运行状态</h5>
+                        <div v-for="item in pve" :key="item.title" class="col m-1 p-0">
+                            <div class="card" :style="{backgroundColor: cardBackgroundColor}">
+                                <div class="card-body p-2 text-center">
+                                    <h6 class="text-sm mb-0 text-capitalize text-nowrap font-weight-bold">{{ item.title }}</h6>
+                                    <hr class="horizontal dark my-1">
+                                    <div class="font-weight-bolder mb-0 text-nowrap text-base" :style="{color: item.color}">
+                                        {{ item.value }}
+                                        <span class="text-sm" v-if="item.unit">{{ item.unit }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid-item gird-40" v-if="data.server_enabled && data.addresses">
                     <h5 class="font-weight-bolder">网络服务运行状态</h5>
                     <div class="card" :style="{backgroundColor: cardBackgroundColor}">
                         <div class="card-body p-1">
@@ -110,22 +149,7 @@
                     </div>
                 </div>
 
-                <div class="row col-lg-4 mt-4 justify-content-between">
-                    <h5 class="font-weight-bolder">Proxmox VE 运行状态</h5>
-                    <div v-for="item in pve" :key="item.title" class="col m-1 p-0">
-                        <div class="card" :style="{backgroundColor: cardBackgroundColor}">
-                            <div class="card-body p-2 text-center">
-                                <h6 class="text-sm mb-0 text-capitalize text-nowrap font-weight-bold">{{ item.title }}</h6>
-                                <hr class="horizontal dark my-1">
-                                <div class="font-weight-bolder mb-0 text-nowrap text-base" :style="{color: item.color}">
-                                    {{ item.value }}
-                                    <span class="text-sm" v-if="item.unit">{{ item.unit }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-8 mt-4" v-if="data.pve_qemus">
+                <div class="grid-item gird-60" v-if="data.pve_enabled && data.pve_qemus">
                     <h5 class="font-weight-bolder">虚拟机运行状态</h5>
                     <div class="card" :style="{backgroundColor: cardBackgroundColor}">
                         <div class="card-body p-1">
@@ -186,7 +210,7 @@
                     </div>
                 </div>
 
-                <div class="col-lg-8 mt-4" v-if="data.dsm_storage">
+                <div class="grid-item gird-60" v-if="data.dsm_enabled && data.dsm_storage">
                     <h5 class="font-weight-bolder">DSM磁盘存储状态</h5>
                     <div class="card" :style="{backgroundColor: cardBackgroundColor}">
                         <div class="card-body p-1">
@@ -235,7 +259,7 @@
                 </div>
             </div>
 
-            <footer class="footer pt-3 ">
+            <footer class="footer pt-3">
                 <div class="container-fluid">
                     <div class="row align-items-center justify-content-center">
                         <div class="copyright text-center text-sm text-body">
@@ -253,6 +277,6 @@
 <script src="./assets/js/vue.v3.3.4.global.min.js"></script>
 <script src="./assets/js/axios.v1.5.0.min.js"></script>
 <script src="./assets/js/spark-md5.min.js"></script>
-<script src="./assets/js/main.js"></script>
+<script src="./assets/js/main.js?001"></script>
 </body>
 </html>

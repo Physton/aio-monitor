@@ -29,6 +29,21 @@ createApp({
                 {title: 'CPU温度', valueKey: 'pve_cpu_temp_value', format: this.format_temp},
                 {title: 'M2温度', valueKey: 'pve_nvme_temp_value', format: this.format_temp},
             ],
+            op: [
+                {title: '系统运行时间', valueKey: 'op_uptime_str'},
+                {title: 'CPU核心', valueKey: 'op_cpu_count', defaultUnit: '核'},
+                {title: 'CPU频率', valueKey: 'op_cpu_freq', defaultUnit: 'MHz'},
+                {title: 'CPU占用', valueKey: 'op_cpu_usage', format: this.format_usage},
+                {title: 'CPU温度', valueKey: 'op_cpu_temp_value', format: this.format_temp},
+                {title: '内存总量', valueKey: 'op_mem_total', format: this.format_size},
+                {title: '内存占用', valueKey: 'op_mem_usage', format: this.format_size},
+                {title: '客户端数', valueKey: 'op_client_num'},
+                {title: '连接数', valueKey: 'op_connect_num'},
+                {title: '总下载流量', valueKey: 'op_totaldown', format: this.format_size},
+                {title: '总上传流量', valueKey: 'op_totalup', format: this.format_size},
+                {title: '下载流量', valueKey: 'op_download', format: this.format_size},
+                {title: '上传流量', valueKey: 'op_upload', format: this.format_size},
+            ],
         }
     },
     mounted() {
@@ -114,7 +129,7 @@ createApp({
                     })
                 }
 
-                this.pve.forEach(item => {
+                const format = (item) => {
                     if (item.valueKey in data) {
                         item.value = data[item.valueKey]
                         if (item.value === 'N/A' || item.value === null || item.value === false || item.value === '') {
@@ -136,7 +151,10 @@ createApp({
                         item.unit = ''
                         item.color = this.color_yellow
                     }
-                })
+                }
+
+                this.pve.forEach(format)
+                this.op.forEach(format)
 
                 this.data = data
             }).catch((error) => {

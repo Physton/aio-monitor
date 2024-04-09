@@ -14,6 +14,8 @@ import paramiko
 import argparse
 import hashlib
 import netifaces
+import ipaddress
+import traceback
 from proxmoxer import ProxmoxAPI
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.responses import JSONResponse
@@ -50,7 +52,13 @@ class Main:
     addresses = []
     threads = []
     is_stop = False
-    data = {}
+    data = {
+        'homeassistant_enabled': False,
+        'openwrt_enabled': False,
+        'pve_enabled': False,
+        'server_enabled': False,
+        'dsm_enabled': False,
+    }
     app = None
     server = None
 
@@ -89,6 +97,7 @@ class Main:
                                                                     'rgba(64, 75, 105, 1)')
         except Exception as e:
             print(f'\033[1;31mconfig file error: {str(e)}\033[0m')
+            traceback.print_exc()
             sys.exit(1)
 
         self._parse_addresses()
@@ -122,6 +131,7 @@ class Main:
     def _parse_addresses(self):
         self.addresses = []
         for address in self.get_value(self.configs, 'addresses', []):
+            self.data['server_enabled'] = True
             if address['local'] not in self.addresses:
                 self.addresses.append(address['local'])
             if address['public'] not in self.addresses:
@@ -199,6 +209,7 @@ class Main:
                 self.server.run()
             except Exception as e:
                 self._write_log(f'_web {str(e)}')
+                self._write_log(traceback.format_exc())
 
     def _get_all_ipv4(self):
         ips = []
@@ -226,13 +237,33 @@ class Main:
         richs['pve_cpu_temp_value'] = Panel("", title='[b]CPU温度[/b]', box=Box.SIMPLE)
         richs['pve_nvme_temp_value'] = Panel("", title='[b]M2温度[/b]', box=Box.SIMPLE)
 
+        richs['op_cpu_temp_value'] = Panel("", title='[b]CPU温度[/b]', box=Box.SIMPLE)
+        richs['op_cpu_count'] = Panel("", title='[b]CPU核心[/b]', box=Box.SIMPLE)
+        richs['op_cpu_freq'] = Panel("", title='[b]CPU频率[/b]', box=Box.SIMPLE)
+        richs['op_cpu_usage'] = Panel("", title='[b]CPU占用[/b]', box=Box.SIMPLE)
+        richs['op_uptime'] = Panel("", title='[b]系统运行时间[/b]', box=Box.SIMPLE)
+        richs['op_mem_total'] = Panel("", title='[b]内存总量[/b]', box=Box.SIMPLE)
+        richs['op_mem_usage'] = Panel("", title='[b]内存占用[/b]', box=Box.SIMPLE)
+        richs['op_client_num'] = Panel("", title='[b]客户端数[/b]', box=Box.SIMPLE)
+        richs['op_connect_num'] = Panel("", title='[b]连接数[/b]', box=Box.SIMPLE)
+        richs['op_totaldown'] = Panel("", title='[b]总下载流量[/b]', box=Box.SIMPLE)
+        richs['op_totalup'] = Panel("", title='[b]总上传流量[/b]', box=Box.SIMPLE)
+        richs['op_download'] = Panel("", title='[b]下载流量[/b]', box=Box.SIMPLE)
+        richs['op_upload'] = Panel("", title='[b]上传流量[/b]', box=Box.SIMPLE)
+
         layouts = []
-        if self.get_value(self.configs, 'homeassistant.sensors', []):
+        if self.data['homeassistant_enabled']:
             layouts.append(Layout(name="HomeAssistant", size=4))
-        layouts.append(Layout(name="ProxmoxVE", size=4))
-        layouts.append(Layout(name="ServiceList"))
-        layouts.append(Layout(name="QemuList"))
-        layouts.append(Layout(name="DiskList"))
+        if self.data['openwrt_enabled']:
+            layouts.append(Layout(name="OpenWrt", size=4))
+        if self.data['pve_enabled']:
+            layouts.append(Layout(name="ProxmoxVE", size=4))
+        if self.data['server_enabled']:
+            layouts.append(Layout(name="ServiceList"))
+        if self.data['pve_enabled']:
+            layouts.append(Layout(name="QemuList"))
+        if self.data['dsm_enabled']:
+            layouts.append(Layout(name="DiskList"))
         layout = Layout(name="root")
         layout.split_column(*layouts)
 
@@ -240,170 +271,262 @@ class Main:
             while not self.is_stop:
                 # live.console.clear()
 
-                temp_richs = []
-                for sensor in self.get_value(self.configs, 'homeassistant.sensors', []):
-                    rich_key = f"ha.{sensor['id']}"
-                    find = False
+                if self.data['homeassistant_enabled']:
+                    temp_richs = []
+                    for sensor in self.get_value(self.configs, 'homeassistant.sensors', []):
+                        rich_key = f"ha.{sensor['id']}"
+                        find = False
 
-                    for item in self.get_value(self.data, 'homeassistant', []):
-                        if item['id'] == sensor['id']:
-                            find = item
-                            break
-                    if find:
-                        value = str(find['value'])
-                        if find['unit']:
-                            value += f"{find['unit']}"
-                        richs[rich_key].renderable = value
+                        for item in self.get_value(self.data, 'homeassistant', []):
+                            if item['id'] == sensor['id']:
+                                find = item
+                                break
+                        if find:
+                            value = str(find['value'])
+                            if find['unit']:
+                                value += f"{find['unit']}"
+                            richs[rich_key].renderable = value
+                        else:
+                            richs[rich_key].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
+                        temp_richs.append(richs[rich_key])
+                    if len(temp_richs):
+                        ha_columns = Columns(temp_richs, title="HomeAssistant", expand=True)
+                        layout["HomeAssistant"].update(ha_columns)
+
+                if self.data['openwrt_enabled']:
+                    if 'op_cpu_temp_value' in self.data:
+                        richs['op_cpu_temp_value'].renderable = self.format_temp(self.data['op_cpu_temp_value'], True)
                     else:
-                        richs[rich_key].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
-                    temp_richs.append(richs[rich_key])
-                if len(temp_richs):
-                    ha_columns = Columns(temp_richs, title="HomeAssistant", expand=True)
-                    layout["HomeAssistant"].update(ha_columns)
+                        richs['op_cpu_temp_value'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
 
-                if self.get_value(self.configs, 'homeassistant.pve_power_sensor_id'):
-                    if 'pve_power' in self.data:
-                        richs['pve_power'].renderable = self.format_power(self.data['pve_power'], True)
+                    if 'op_cpu_count' in self.data:
+                        richs['op_cpu_count'].renderable = f"{self.data['op_cpu_count']} 核"
+                        richs['op_cpu_count'].style = 'none'
                     else:
-                        richs['pve_power'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
+                        richs['op_cpu_count'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
 
-                if 'pve_cpu_count' in self.data:
-                    richs['pve_cpu_count'].renderable = f"{self.data['pve_cpu_count']} 核"
-                    richs['pve_cpu_count'].style = 'none'
-                else:
-                    richs['pve_cpu_count'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
+                    if 'op_cpu_freq' in self.data:
+                        richs['op_cpu_freq'].renderable = f"{self.data['op_cpu_freq']} MHz"
+                        richs['op_cpu_freq'].style = 'none'
+                    else:
+                        richs['op_cpu_freq'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
 
-                if 'pve_cpu_freq' in self.data:
-                    richs['pve_cpu_freq'].renderable = f"{self.data['pve_cpu_freq']} MHz"
-                    richs['pve_cpu_freq'].style = 'none'
-                else:
-                    richs['pve_cpu_freq'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
+                    if 'op_cpu_usage' in self.data:
+                        richs['op_cpu_usage'].renderable = self.format_usage(self.data['op_cpu_usage'], True)
+                    else:
+                        richs['op_cpu_usage'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
 
-                if 'pve_cpu_usage' in self.data:
-                    richs['pve_cpu_usage'].renderable = self.format_usage(self.data['pve_cpu_usage'], True)
-                else:
-                    richs['pve_cpu_usage'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
+                    if 'op_uptime_str' in self.data:
+                        richs['op_uptime'].renderable = self.data['op_uptime_str']
+                        richs['op_uptime'].style = 'none'
+                    else:
+                        richs['op_uptime'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
 
-                if 'pve_mem_total' in self.data:
-                    richs['pve_mem_total'].renderable = self.format_size(self.data['pve_mem_total'], True)
-                else:
-                    richs['pve_mem_total'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
+                    if 'op_mem_total' in self.data:
+                        richs['op_mem_total'].renderable = self.format_size(self.data['op_mem_total'], True)
+                    else:
+                        richs['op_mem_total'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
 
-                if 'pve_mem_usage' in self.data:
-                    richs['pve_mem_usage'].renderable = self.format_size(self.data['pve_mem_usage'], True)
-                else:
-                    richs['pve_mem_usage'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
+                    if 'op_mem_usage' in self.data:
+                        richs['op_mem_usage'].renderable = self.format_size(self.data['op_mem_usage'], True)
+                    else:
+                        richs['op_mem_usage'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
 
-                if 'pve_cpu_fan_value' in self.data:
-                    richs['pve_cpu_fan_value'].renderable = f"{self.data['pve_cpu_fan_value']} RPM"
-                    richs['pve_cpu_fan_value'].style = 'none'
-                else:
-                    richs['pve_cpu_fan_value'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
+                    if 'op_client_num' in self.data:
+                        richs['op_client_num'].renderable = str(self.data['op_client_num'])
+                        richs['op_client_num'].style = 'none'
+                    else:
+                        richs['op_client_num'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
 
-                if 'pve_disk_fan_value' in self.data:
-                    richs['pve_disk_fan_value'].renderable = f"{self.data['pve_disk_fan_value']} RPM"
-                    richs['pve_disk_fan_value'].style = 'none'
-                else:
-                    richs['pve_disk_fan_value'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
+                    if 'op_connect_num' in self.data:
+                        richs['op_connect_num'].renderable = str(self.data['op_connect_num'])
+                        richs['op_connect_num'].style = 'none'
+                    else:
+                        richs['op_connect_num'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
 
-                if 'pve_cpu_temp_value' in self.data:
-                    richs['pve_cpu_temp_value'].renderable = self.format_temp(self.data['pve_cpu_temp_value'], True)
-                else:
-                    richs['pve_cpu_temp_value'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
+                    if 'op_totaldown' in self.data:
+                        richs['op_totaldown'].renderable = self.format_size(self.data['op_totaldown'], True)
+                    else:
+                        richs['op_totaldown'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
 
-                if 'pve_nvme_temp_value' in self.data:
-                    richs['pve_nvme_temp_value'].renderable = self.format_temp(self.data['pve_nvme_temp_value'], True)
-                else:
-                    richs['pve_nvme_temp_value'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
+                    if 'op_totalup' in self.data:
+                        richs['op_totalup'].renderable = self.format_size(self.data['op_totalup'], True)
+                    else:
+                        richs['op_totalup'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
 
-                renderables = []
-                if self.get_value(self.configs, 'homeassistant.pve_power_sensor_id'):
-                    renderables.append(richs['pve_power'])
-                renderables += [
-                    richs['pve_cpu_count'],
-                    richs['pve_cpu_freq'],
-                    richs['pve_cpu_usage'],
-                    richs['pve_mem_total'],
-                    richs['pve_mem_usage'],
-                    richs['pve_cpu_fan_value'],
-                    richs['pve_disk_fan_value'],
-                    richs['pve_cpu_temp_value'],
-                    richs['pve_nvme_temp_value'],
-                ]
-                pve_columns = Columns(renderables, title="ProxmoxVE", expand=True)
-                layout["ProxmoxVE"].update(pve_columns)
+                    if 'op_download' in self.data:
+                        richs['op_download'].renderable = self.format_size(self.data['op_download'], True)
+                    else:
+                        richs['op_download'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
 
-                server_table = Table(show_header=True, header_style="bold", box=Box.SIMPLE, expand=True)
-                server_table.add_column("服务列表", justify="center", no_wrap=True)
-                server_table.add_column("本地", justify="left", no_wrap=True)
-                server_table.add_column("本地延迟", justify="right", no_wrap=True)
-                server_table.add_column("本地端口", justify="right", no_wrap=True)
-                server_table.add_column("公网", justify="left", no_wrap=True)
-                server_table.add_column("公网延迟", justify="right", no_wrap=True)
-                server_table.add_column("公网端口", justify="right", no_wrap=True)
-                for address in self.get_value(self.configs, 'addresses', []):
-                    server_table.add_row(
-                        address['name'],
-                        f"{address['local']}:{address['local_port']}",
-                        self.format_timeout(address, 'local_timeout'),
-                        self.format_port(address, 'local_port_status'),
-                        # f"{address['public']}:{address['public_port']}",
-                        f"{address['public_port']}",
-                        self.format_timeout(address, 'public_timeout'),
-                        self.format_port(address, 'public_port_status'),
-                    )
-                layout["ServiceList"].update(server_table)
+                    if 'op_upload' in self.data:
+                        richs['op_upload'].renderable = self.format_size(self.data['op_upload'], True)
+                    else:
+                        richs['op_upload'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
 
-                pve_qemus_table = Table(show_header=True, header_style="bold", box=Box.SIMPLE, expand=True)
-                pve_qemus_table.add_column("PVE虚拟机状态", justify="center", no_wrap=True)
-                pve_qemus_table.add_column("ID", justify="center", no_wrap=True)
-                pve_qemus_table.add_column("名称", justify="left", no_wrap=True)
-                pve_qemus_table.add_column("类型", justify="center", no_wrap=True)
-                pve_qemus_table.add_column("CPU核心", justify="center", no_wrap=True)
-                pve_qemus_table.add_column("CPU占用", justify="right", no_wrap=True)
-                pve_qemus_table.add_column("内存总量", justify="right", no_wrap=True)
-                pve_qemus_table.add_column("内存占用", justify="right", no_wrap=True)
-                pve_qemus_table.add_column("流入流量", justify="right", no_wrap=True)
-                pve_qemus_table.add_column("流出流量", justify="right", no_wrap=True)
-                for qemu in self.get_value(self.data, 'pve_qemus', []):
-                    pve_qemus_table.add_row(
-                        '[bright_green]running[/bright_green]' if qemu[
-                                                                      'status'] == 'running' else f"[bright_red]{qemu['status']}[/bright_red]",
-                        str(qemu['vmid']),
-                        qemu['name'],
-                        qemu['type'],
-                        f"{qemu['maxcpu']} 核",
-                        self.format_usage(qemu['cpu'], True),
-                        self.format_size(qemu['maxmem'], True),
-                        self.format_size(qemu['mem'], True),
-                        self.format_size(qemu['netin'], True),
-                        self.format_size(qemu['netout'], True),
-                    )
-                layout["QemuList"].update(pve_qemus_table)
+                    layout["OpenWrt"].update(Columns([
+                        richs['op_uptime'],
+                        richs['op_cpu_count'],
+                        richs['op_cpu_freq'],
+                        richs['op_cpu_usage'],
+                        richs['op_cpu_temp_value'],
+                        richs['op_mem_total'],
+                        richs['op_mem_usage'],
+                        richs['op_client_num'],
+                        richs['op_connect_num'],
+                        richs['op_totaldown'],
+                        richs['op_totalup'],
+                        richs['op_download'],
+                        richs['op_upload'],
+                    ], title="OpenWrt", expand=True))
 
-                disks_table = Table(show_header=True, header_style="bold", box=Box.SIMPLE, expand=True)
-                disks_table.add_column("NAS存储", justify="center", no_wrap=True)
-                disks_table.add_column("型号", justify="left", no_wrap=True)
-                disks_table.add_column("序列号", justify="left", no_wrap=True)
-                disks_table.add_column("容量", justify="right", no_wrap=True)
-                disks_table.add_column("温度", justify="right", no_wrap=True)
-                disks_table.add_column("读取", justify="right", no_wrap=True)
-                disks_table.add_column("写入", justify="right", no_wrap=True)
-                for disk in self.get_value(self.data, 'dsm_storage.data.disks', []):
-                    disks_table.add_row(
-                        disk['id'],
-                        disk['model'],
-                        disk['serial'],
-                        self.format_size(disk['size_total'], True),
-                        self.format_hdd_temp(disk['temp'], True) if disk[
-                                                                        'diskType'] == 'SATA' else self.format_temp(
-                            disk['temp'], True),
-                        self.format_size(disk['utilization']['read_byte'],
-                                         True) if disk['utilization'] else '[bright_yellow]loading[/bright_yellow]',
-                        self.format_size(disk['utilization']['write_byte'],
-                                         True) if disk['utilization'] else '[bright_yellow]loading[/bright_yellow]',
-                    )
-                layout["DiskList"].update(disks_table)
+                if self.data['pve_enabled']:
+                    if self.get_value(self.configs, 'homeassistant.pve_power_sensor_id'):
+                        if 'pve_power' in self.data:
+                            richs['pve_power'].renderable = self.format_power(self.data['pve_power'], True)
+                        else:
+                            richs['pve_power'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
+
+                    if 'pve_cpu_count' in self.data:
+                        richs['pve_cpu_count'].renderable = f"{self.data['pve_cpu_count']} 核"
+                        richs['pve_cpu_count'].style = 'none'
+                    else:
+                        richs['pve_cpu_count'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
+
+                    if 'pve_cpu_freq' in self.data:
+                        richs['pve_cpu_freq'].renderable = f"{self.data['pve_cpu_freq']} MHz"
+                        richs['pve_cpu_freq'].style = 'none'
+                    else:
+                        richs['pve_cpu_freq'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
+
+                    if 'pve_cpu_usage' in self.data:
+                        richs['pve_cpu_usage'].renderable = self.format_usage(self.data['pve_cpu_usage'], True)
+                    else:
+                        richs['pve_cpu_usage'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
+
+                    if 'pve_mem_total' in self.data:
+                        richs['pve_mem_total'].renderable = self.format_size(self.data['pve_mem_total'], True)
+                    else:
+                        richs['pve_mem_total'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
+
+                    if 'pve_mem_usage' in self.data:
+                        richs['pve_mem_usage'].renderable = self.format_size(self.data['pve_mem_usage'], True)
+                    else:
+                        richs['pve_mem_usage'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
+
+                    if 'pve_cpu_fan_value' in self.data:
+                        richs['pve_cpu_fan_value'].renderable = f"{self.data['pve_cpu_fan_value']} RPM"
+                        richs['pve_cpu_fan_value'].style = 'none'
+                    else:
+                        richs['pve_cpu_fan_value'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
+
+                    if 'pve_disk_fan_value' in self.data:
+                        richs['pve_disk_fan_value'].renderable = f"{self.data['pve_disk_fan_value']} RPM"
+                        richs['pve_disk_fan_value'].style = 'none'
+                    else:
+                        richs['pve_disk_fan_value'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
+
+                    if 'pve_cpu_temp_value' in self.data:
+                        richs['pve_cpu_temp_value'].renderable = self.format_temp(self.data['pve_cpu_temp_value'], True)
+                    else:
+                        richs['pve_cpu_temp_value'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
+
+                    if 'pve_nvme_temp_value' in self.data:
+                        richs['pve_nvme_temp_value'].renderable = self.format_temp(self.data['pve_nvme_temp_value'], True)
+                    else:
+                        richs['pve_nvme_temp_value'].renderable = f'[{self.color_yellow}]loading[/{self.color_yellow}]'
+
+                    renderables = []
+                    if self.get_value(self.configs, 'homeassistant.pve_power_sensor_id'):
+                        renderables.append(richs['pve_power'])
+                    renderables += [
+                        richs['pve_cpu_count'],
+                        richs['pve_cpu_freq'],
+                        richs['pve_cpu_usage'],
+                        richs['pve_mem_total'],
+                        richs['pve_mem_usage'],
+                        richs['pve_cpu_fan_value'],
+                        richs['pve_disk_fan_value'],
+                        richs['pve_cpu_temp_value'],
+                        richs['pve_nvme_temp_value'],
+                    ]
+                    pve_columns = Columns(renderables, title="ProxmoxVE", expand=True)
+                    layout["ProxmoxVE"].update(pve_columns)
+
+                if self.data['server_enabled']:
+                    server_table = Table(show_header=True, header_style="bold", box=Box.SIMPLE, expand=True)
+                    server_table.add_column("服务列表", justify="center", no_wrap=True)
+                    server_table.add_column("本地", justify="left", no_wrap=True)
+                    server_table.add_column("本地延迟", justify="right", no_wrap=True)
+                    server_table.add_column("本地端口", justify="right", no_wrap=True)
+                    server_table.add_column("公网", justify="left", no_wrap=True)
+                    server_table.add_column("公网延迟", justify="right", no_wrap=True)
+                    server_table.add_column("公网端口", justify="right", no_wrap=True)
+                    for address in self.get_value(self.configs, 'addresses', []):
+                        server_table.add_row(
+                            address['name'],
+                            f"{address['local']}:{address['local_port']}",
+                            self.format_timeout(address, 'local_timeout'),
+                            self.format_port(address, 'local_port_status'),
+                            # f"{address['public']}:{address['public_port']}",
+                            f"{address['public_port']}",
+                            self.format_timeout(address, 'public_timeout'),
+                            self.format_port(address, 'public_port_status'),
+                        )
+                    layout["ServiceList"].update(server_table)
+
+                if self.data['pve_enabled']:
+                    pve_qemus_table = Table(show_header=True, header_style="bold", box=Box.SIMPLE, expand=True)
+                    pve_qemus_table.add_column("PVE虚拟机状态", justify="center", no_wrap=True)
+                    pve_qemus_table.add_column("ID", justify="center", no_wrap=True)
+                    pve_qemus_table.add_column("名称", justify="left", no_wrap=True)
+                    pve_qemus_table.add_column("类型", justify="center", no_wrap=True)
+                    pve_qemus_table.add_column("CPU核心", justify="center", no_wrap=True)
+                    pve_qemus_table.add_column("CPU占用", justify="right", no_wrap=True)
+                    pve_qemus_table.add_column("内存总量", justify="right", no_wrap=True)
+                    pve_qemus_table.add_column("内存占用", justify="right", no_wrap=True)
+                    pve_qemus_table.add_column("流入流量", justify="right", no_wrap=True)
+                    pve_qemus_table.add_column("流出流量", justify="right", no_wrap=True)
+                    for qemu in self.get_value(self.data, 'pve_qemus', []):
+                        pve_qemus_table.add_row(
+                            '[bright_green]running[/bright_green]' if qemu[
+                                                                          'status'] == 'running' else f"[bright_red]{qemu['status']}[/bright_red]",
+                            str(qemu['vmid']),
+                            qemu['name'],
+                            qemu['type'],
+                            f"{qemu['maxcpu']} 核",
+                            self.format_usage(qemu['cpu'], True),
+                            self.format_size(qemu['maxmem'], True),
+                            self.format_size(qemu['mem'], True),
+                            self.format_size(qemu['netin'], True),
+                            self.format_size(qemu['netout'], True),
+                        )
+                    layout["QemuList"].update(pve_qemus_table)
+
+                if self.data['dsm_enabled']:
+                    disks_table = Table(show_header=True, header_style="bold", box=Box.SIMPLE, expand=True)
+                    disks_table.add_column("NAS存储", justify="center", no_wrap=True)
+                    disks_table.add_column("型号", justify="left", no_wrap=True)
+                    disks_table.add_column("序列号", justify="left", no_wrap=True)
+                    disks_table.add_column("容量", justify="right", no_wrap=True)
+                    disks_table.add_column("温度", justify="right", no_wrap=True)
+                    disks_table.add_column("读取", justify="right", no_wrap=True)
+                    disks_table.add_column("写入", justify="right", no_wrap=True)
+                    for disk in self.get_value(self.data, 'dsm_storage.data.disks', []):
+                        disks_table.add_row(
+                            disk['id'],
+                            disk['model'],
+                            disk['serial'],
+                            self.format_size(disk['size_total'], True),
+                            self.format_hdd_temp(disk['temp'], True) if disk[
+                                                                            'diskType'] == 'SATA' else self.format_temp(
+                                disk['temp'], True),
+                            self.format_size(disk['utilization']['read_byte'],
+                                             True) if disk['utilization'] else '[bright_yellow]loading[/bright_yellow]',
+                            self.format_size(disk['utilization']['write_byte'],
+                                             True) if disk['utilization'] else '[bright_yellow]loading[/bright_yellow]',
+                        )
+                    layout["DiskList"].update(disks_table)
 
                 # live.console.print(ha_columns)
                 # live.console.print(pve_columns)
@@ -412,6 +535,25 @@ class Main:
                 # live.console.print(disks_table)
                 # live.update([pve_columns, server_table, pve_qemus_table, disks_table])
                 time.sleep(1)
+
+    def _ssh_command(self, ssh, command):
+        stdin, stdout, stderr = ssh.exec_command(command)
+        stdout_result = stdout.read().decode()
+        stderr_result = stderr.read().decode()
+        if stdout_result:
+            return stdout_result
+        elif stderr_result:
+            raise Exception(stderr_result)
+        else:
+            raise Exception('unknown error')
+
+    def _is_subnet(self, ip, subnets):
+        for subnet in subnets:
+            temp_ip = ipaddress.ip_address(ip)
+            temp_subnet = ipaddress.ip_network(subnet)
+            if temp_ip in temp_subnet:
+                return True
+        return False
 
     def _check_timeout(self, address):
         while not self.is_stop:
@@ -481,6 +623,7 @@ class Main:
             node_success = False
             qemus_success = False
             if pve_host and pve_port and pve_username and pve_password:
+                self.data['pve_enabled'] = True
                 try:
                     if not api:
                         api = ProxmoxAPI(pve_host, port=pve_port, user=pve_username, password=pve_password,
@@ -503,6 +646,7 @@ class Main:
                 except Exception as e:
                     api = None
                     self._write_log(f'_check_pve_web {str(e)}')
+                    self._write_log(traceback.format_exc())
 
             if not node_success:
                 self.data['pve_cpu_usage'] = 'N/A'
@@ -529,6 +673,7 @@ class Main:
             sensors_success = False
             cpuinfo_success = False
             if pve_host and pve_port and pve_username and pve_password:
+                self.data['pve_enabled'] = True
                 try:
                     if not ssh:
                         ssh = paramiko.SSHClient()
@@ -541,10 +686,8 @@ class Main:
                         ssh = None
                         raise Exception('SSH is not active')
 
-                    stdin, stdout, stderr = ssh.exec_command('sensors -j')
-                    stdout_result = stdout.read().decode()
-                    stderr_result = stderr.read().decode()
-                    if stdout_result:
+                    try:
+                        stdout_result = self._ssh_command(ssh, 'sensors -j')
                         sensors = json.loads(stdout_result)
                         # self.configs['pve']['sensors'] = sensors
                         self.data['pve_disk_fan_value'] = self.get_value(sensors, disk_fan)
@@ -552,24 +695,25 @@ class Main:
                         self.data['pve_cpu_temp_value'] = self.get_value(sensors, cpu_temp)
                         self.data['pve_nvme_temp_value'] = self.get_value(sensors, nvme_temp)
                         sensors_success = True
-                    elif stderr_result:
-                        self._write_log(f'_check_pve_ssh sensors {stderr_result}')
+                    except Exception as e:
+                        self._write_log(f'_check_pve_ssh sensors {str(e)}')
+                        self._write_log(traceback.format_exc())
 
-                    stdin, stdout, stderr = ssh.exec_command("cat /proc/cpuinfo | grep 'MHz'")
-                    stdout_result = stdout.read().decode()
-                    stderr_result = stderr.read().decode()
-                    if stdout_result:
+                    try:
+                        stdout_result = self._ssh_command(ssh, "cat /proc/cpuinfo | grep 'MHz'")
                         cpufreqs = []
                         for line in stdout_result.split('\n'):
                             if line:
                                 cpufreqs.append(float(line.split(':')[1].strip()))
                         self.data['pve_cpu_freq'] = round(sum(cpufreqs) / len(cpufreqs), 3)
                         cpuinfo_success = True
-                    elif stderr_result:
-                        self._write_log(f'_check_pve_ssh cpuinfo {stderr_result}')
+                    except Exception as e:
+                        self._write_log(f'_check_pve_ssh cpuinfo {str(e)}')
+                        self._write_log(traceback.format_exc())
                 except Exception as e:
                     ssh = None
                     self._write_log(f'_check_pve_ssh {str(e)}')
+                    self._write_log(traceback.format_exc())
                     pass
 
             if not sensors_success:
@@ -593,6 +737,7 @@ class Main:
 
             dsm_success = False
             if dsm_host and dsm_port and dsm_username and dsm_password:
+                self.data['dsm_enabled'] = True
                 try:
                     if not api:
                         api = synology_api.core_sys_info.SysInfo(ip_address=dsm_host,
@@ -608,9 +753,9 @@ class Main:
                     dsm_success = True
 
                     if dsm_storage and dsm_disk_utilization:
-                        for disk in dsm_storage['data']['disks']:
+                        for disk in self.get_value(dsm_storage, 'data.disks', []):
                             utilization = None
-                            for disk_utilization in dsm_disk_utilization['disk']:
+                            for disk_utilization in self.get_value(dsm_disk_utilization, 'disk', []):
                                 if disk_utilization['device'] == disk['id']:
                                     utilization = disk_utilization
                                     break
@@ -622,6 +767,7 @@ class Main:
                 except Exception as e:
                     api = None
                     self._write_log(f'_check_nas_disk {str(e)}')
+                    self._write_log(traceback.format_exc())
 
             # if not dsm_success:
             #     self.data['dsm_storage'] = None
@@ -633,8 +779,11 @@ class Main:
         while not self.is_stop:
             address = self.get_value(self.configs, 'homeassistant.address', None)
             token = self.get_value(self.configs, 'homeassistant.token', None)
+            sensors = self.get_value(self.configs, 'homeassistant.sensors', [])
             success = False
             if address and token:
+                if sensors and len(sensors) > 0:
+                    self.data['homeassistant_enabled'] = True
                 try:
                     url = f'{address}/api/states'
                     headers = {'Authorization': f'Bearer {token}'}
@@ -642,7 +791,7 @@ class Main:
                     r.close()
                     data = r.json()
                     for item in data:
-                        for sensor in self.get_value(self.configs, 'homeassistant.sensors', []):
+                        for sensor in sensors:
                             if sensor['id'] == item['entity_id']:
                                 sensor['value'] = item['state']
                                 sensor['unit'] = self.get_value(item, 'attributes.unit_of_measurement', '')
@@ -656,14 +805,168 @@ class Main:
                             self.data['pve_power_unit'] = '' if not self.data['pve_power_unit'] else self.data[
                                 'pve_power_unit']
 
-                    self.data['homeassistant'] = self.get_value(self.configs, 'homeassistant.sensors', [])
+                    self.data['homeassistant'] = sensors
                     success = True
                 except Exception as e:
                     self._write_log(f'_check_homeassistant {str(e)}')
+                    self._write_log(traceback.format_exc())
             if not success:
                 self.data['pve_power'] = 'N/A'
                 self.data['pve_power_unit'] = 'N/A'
             time.sleep(1)
+
+    def _check_op_ssh(self):
+        ssh = None
+        while not self.is_stop:
+            op_host = self.get_value(self.configs, 'op_ssh.host', None)
+            op_port = self.get_value(self.configs, 'op_ssh.port', None)
+            op_username = self.get_value(self.configs, 'op_ssh.username', None)
+            op_password = self.get_value(self.configs, 'op_ssh.password', None)
+            cpu_temp = self.get_value(self.configs, 'op_ssh.cpu_temp', None)
+            sensors_success = False
+            cpuinfo_success = False
+            mpstat_success = False
+            ubus_success = False
+            if op_host and op_port and op_username and op_password:
+                self.data['openwrt_enabled'] = True
+                try:
+                    if not ssh:
+                        ssh = paramiko.SSHClient()
+                        # 允许自动接受未知的主机密钥（在生产环境中应谨慎使用）
+                        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                        ssh.connect(op_host, port=op_port, username=op_username, password=op_password,
+                                    timeout=5)
+
+                    if not ssh.get_transport().is_active():
+                        ssh = None
+                        raise Exception('SSH is not active')
+
+                    try:
+                        stdout_result = self._ssh_command(ssh, 'sensors -j')
+                        sensors = json.loads(stdout_result)
+                        self.data['op_cpu_temp_value'] = self.get_value(sensors, cpu_temp)
+                        sensors_success = True
+                    except Exception as e:
+                        self._write_log(f'_check_op_ssh sensors {str(e)}')
+                        self._write_log(traceback.format_exc())
+
+                    try:
+                        stdout_result = self._ssh_command(ssh, "cat /proc/cpuinfo | grep 'MHz'")
+                        cpufreqs = []
+                        for line in stdout_result.split('\n'):
+                            if line:
+                                cpufreqs.append(float(line.split(':')[1].strip()))
+                        self.data['op_cpu_freq'] = round(sum(cpufreqs) / len(cpufreqs), 3)
+                        self.data['op_cpu_count'] = len(cpufreqs)
+                        cpuinfo_success = True
+                    except Exception as e:
+                        self._write_log(f'_check_op_ssh cpuinfo {str(e)}')
+                        self._write_log(traceback.format_exc())
+
+                    try:
+                        stdout_result = self._ssh_command(ssh, "mpstat -P all 1 1 | grep 'all' | awk 'NR==1{print $12}'")
+                        self.data['op_cpu_usage'] = (100 - float(stdout_result)) / 100
+                        mpstat_success = True
+                    except Exception as e:
+                        self._write_log(f'_check_op_ssh mpstat {str(e)}')
+                        self._write_log(traceback.format_exc())
+
+                    try:
+                        stdout_result = self._ssh_command(ssh, "ubus call system info")
+                        info = json.loads(stdout_result)
+                        self.data['op_uptime'] = info['uptime']
+                        self.data['op_uptime_str'] = self.format_uptime(self.data['op_uptime'])
+                        self.data['op_mem_total'] = info['memory']['total']
+                        self.data['op_mem_usage'] = info['memory']['total'] - info['memory']['free']
+
+                        # stdout_result = self._ssh_command(ssh, "ubus call luci getConntrackList")
+                        # info = json.loads(stdout_result)
+                        # self.data['op_connect_num'] = info['count']
+                        params = json.dumps({'mode': 'conntrack'})
+                        stdout_result = self._ssh_command(ssh, f"ubus call luci getRealtimeStats '{params}'")
+                        info = json.loads(stdout_result)
+                        last_item = info['result'][-1]
+                        self.data['op_connect_num_tcp'] = last_item[1]
+                        self.data['op_connect_num_udp'] = last_item[2]
+                        self.data['op_connect_num_other'] = last_item[3]
+                        self.data['op_connect_num'] = last_item[1] + last_item[2] + last_item[3]
+
+                        stdout_result = self._ssh_command(ssh, "ubus call network.interface.wan status")
+                        info = json.loads(stdout_result)
+                        self.data['op_wan_device'] = info['device']
+                        params = json.dumps({
+                            'mode': 'interface',
+                            'device': info['device']
+                        })
+                        stdout_result = self._ssh_command(ssh, f"ubus call luci getRealtimeStats '{params}'")
+                        info = json.loads(stdout_result)
+                        last_item = info['result'][-1]
+                        prev_item = info['result'][-2]
+                        self.data['op_totaldown'] = last_item[1]
+                        self.data['op_totalup'] = last_item[3]
+                        self.data['op_download'] = last_item[1] - prev_item[1]
+                        self.data['op_upload'] = last_item[3] - prev_item[3]
+
+                        stdout_result = self._ssh_command(ssh, "ubus call network.interface.lan status")
+                        info = json.loads(stdout_result)
+                        addresses = []
+                        subnets = []
+                        for item in info['ipv4-address']:
+                            ip_iface = ipaddress.ip_interface(f'{item["address"]}/{item["mask"]}')
+                            ip_subnet = f"{ip_iface.network.network_address}/{ip_iface.network.prefixlen}"
+                            addresses.append(item["address"])
+                            subnets.append(ip_subnet)
+
+                        stdout_result = self._ssh_command(ssh, "ubus call luci-rpc getHostHints")
+                        info = json.loads(stdout_result)
+                        self.data['op_client_num'] = 0
+                        for key in info:
+                            item = info[key]
+                            if len(item['ipaddrs']) == 0:
+                                continue
+                            for ipaddr in item['ipaddrs']:
+                                if ipaddr in addresses:
+                                    break
+                                if self._is_subnet(ipaddr, subnets):
+                                    self.data['op_client_num'] += 1
+                                    break
+
+                        ubus_success = True
+                    except Exception as e:
+                        self._write_log(f'_check_op_ssh ubus {str(e)}')
+                        self._write_log(traceback.format_exc())
+
+                except Exception as e:
+                    ssh = None
+                    self._write_log(f'_check_op_ssh {str(e)}')
+                    self._write_log(traceback.format_exc())
+                    pass
+
+            if not sensors_success:
+                self.data['op_cpu_temp_value'] = 'N/A'
+            if not cpuinfo_success:
+                self.data['op_cpu_freq'] = 'N/A'
+                self.data['op_cpu_count'] = 'N/A'
+            if not mpstat_success:
+                self.data['op_cpu_usage'] = 'N/A'
+            if not ubus_success:
+                self.data['op_uptime'] = 'N/A'
+                self.data['op_uptime_str'] = 'N/A'
+                self.data['op_mem_total'] = 'N/A'
+                self.data['op_mem_usage'] = 'N/A'
+                self.data['op_connect_num_tcp'] = 'N/A'
+                self.data['op_connect_num_udp'] = 'N/A'
+                self.data['op_connect_num_other'] = 'N/A'
+                self.data['op_connect_num'] = 'N/A'
+                self.data['op_wan_device'] = 'N/A'
+                self.data['op_totaldown'] = 'N/A'
+                self.data['op_totalup'] = 'N/A'
+                self.data['op_download'] = 'N/A'
+                self.data['op_upload'] = 'N/A'
+                self.data['op_client_num'] = 'N/A'
+            time.sleep(1)
+        if ssh:
+            ssh.close()
 
     def format_timeout(self, address, key):
         if key in address:
@@ -775,6 +1078,14 @@ class Main:
             result = f"[{color}]{result}[/{color}]"
         return result
 
+    def format_uptime(self, uptime):
+        # 转换成 x天x小时x分钟x秒
+        days = uptime // 86400
+        hours = (uptime - days * 86400) // 3600
+        minutes = (uptime - days * 86400 - hours * 3600) // 60
+        seconds = uptime - days * 86400 - hours * 3600 - minutes * 60
+        return f'{days}天{hours}小时{minutes}分钟{seconds}秒'
+
     def get_value(self, data, key, default=None):
         key = key.split('.')
         for k in key:
@@ -799,6 +1110,7 @@ class Main:
         self.threads.append(threading.Thread(target=self._check_pve_web))
         self.threads.append(threading.Thread(target=self._check_pve_ssh))
         self.threads.append(threading.Thread(target=self._check_homeassistant))
+        self.threads.append(threading.Thread(target=self._check_op_ssh))
         if self.web_gui:
             self.threads.append(threading.Thread(target=self._web))
         if self.shell_gui:
@@ -849,4 +1161,5 @@ Examples:
 
     args = parser.parse_args()
 
-    Main(web_gui=args.web, shell_gui=args.shell, config_file=args.config, logs_path=args.logs).run()
+    main = Main(web_gui=args.web, shell_gui=args.shell, config_file=args.config, logs_path=args.logs)
+    main.run()
