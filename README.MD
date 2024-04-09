@@ -11,7 +11,7 @@
 [![Docker Pulls](https://img.shields.io/docker/pulls/physton/aio-monitor?style=flat-square)](https://hub.docker.com/r/physton/aio-monitor)
 [![Docker stars](https://img.shields.io/docker/stars/physton/aio-monitor?style=flat-square)](https://hub.docker.com/r/physton/aio-monitor/stargazers)
 
-个人家用 All-in-one ProxmoxVE 服务器的监视面板。终端实时监视 + WEB网页实时监视。
+ProxmoxVE(PVE)、群晖DSM、OpenWrt软路由系统信息数据实时监视面板。终端实时监视 + WEB网页实时监视。
 
 ## 主要功能：
 1. 读取 [Home Assistant](https://www.home-assistant.io/) 中物联网产品传感器值（需要展示什么传感器可以完全自定义）。
