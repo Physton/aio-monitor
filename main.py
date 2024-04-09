@@ -178,12 +178,12 @@ class Main:
                             subject = Authorize.get_jwt_subject()
                             if subject != hashlib.md5(f'{app_username}.{password_md5}'.encode('utf-8')).hexdigest():
                                 raise HTTPException(status_code=401, detail="Unauthorized")
-                        self.data['addresses'] = self.configs['addresses']
+                        self.data['addresses'] = self.get_value(self.configs, 'addresses', [])
                         return {"data": self.data}
                 else:
                     @self.app.get("/api/data")
                     def api_data():
-                        self.data['addresses'] = self.configs['addresses']
+                        self.data['addresses'] = self.get_value(self.configs, 'addresses', [])
                         return {"data": self.data}
 
                 self.app.mount("/", StaticFiles(directory="./html", html=True), name="static")
@@ -522,10 +522,10 @@ class Main:
             pve_port = self.get_value(self.configs, 'pve_ssh.port', None)
             pve_username = self.get_value(self.configs, 'pve_ssh.username', None)
             pve_password = self.get_value(self.configs, 'pve_ssh.password', None)
-            disk_fan = self.configs['pve_ssh']['disk_fan']
-            cpu_fan = self.configs['pve_ssh']['cpu_fan']
-            cpu_temp = self.configs['pve_ssh']['cpu_temp']
-            nvme_temp = self.configs['pve_ssh']['nvme_temp']
+            disk_fan = self.get_value(self.configs, 'pve_ssh.disk_fan', None)
+            cpu_fan = self.get_value(self.configs, 'pve_ssh.cpu_fan', None)
+            cpu_temp = self.get_value(self.configs, 'pve_ssh.cpu_temp', None)
+            nvme_temp = self.get_value(self.configs, 'pve_ssh.nvme_temp', None)
             sensors_success = False
             cpuinfo_success = False
             if pve_host and pve_port and pve_username and pve_password:
@@ -656,7 +656,7 @@ class Main:
                             self.data['pve_power_unit'] = '' if not self.data['pve_power_unit'] else self.data[
                                 'pve_power_unit']
 
-                    self.data['homeassistant'] = self.configs['homeassistant']['sensors']
+                    self.data['homeassistant'] = self.get_value(self.configs, 'homeassistant.sensors', [])
                     success = True
                 except Exception as e:
                     self._write_log(f'_check_homeassistant {str(e)}')

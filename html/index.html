@@ -47,7 +47,7 @@
 
         <div v-if="!isShowLogin" class="container-fluid pt-0">
             <div class="row justify-content-between">
-                <div class="row col-lg-4 mt-4 justify-content-between" v-if="data.homeassistant">
+                <div class="row col-lg-4 mt-4 justify-content-between" v-if="data.homeassistant && data.homeassistant.length">
                     <h5 class="font-weight-bolder">Home Assistant</h5>
                     <div v-for="item in data.homeassistant" :key="item.id" class="col m-1 p-0">
                         <div class="card" :style="{backgroundColor: cardBackgroundColor}">
