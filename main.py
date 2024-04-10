@@ -111,6 +111,8 @@ class Main:
 
     def _clear_logs(self, max_num=3):
         files = os.listdir(self.logs_path)
+        files = [file for file in files if file.endswith('.log')]
+        files.sort()
         if len(files) > max_num:
             for file in files[:-max_num]:
                 os.remove(os.path.join(self.logs_path, file))
