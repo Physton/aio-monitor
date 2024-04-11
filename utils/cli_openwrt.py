@@ -66,12 +66,12 @@ def cli_openwrt(_configs, _data, _richs, _layout):
             _richs['op_totalup'].renderable = Format.yellow('loading')
 
         if 'op_download' in _data:
-            _richs['op_download'].renderable = Format.size(_data['op_download'], True)
+            _richs['op_download'].renderable = Format.size_flow(_data['op_download'], True)
         else:
             _richs['op_download'].renderable = Format.yellow('loading')
 
         if 'op_upload' in _data:
-            _richs['op_upload'].renderable = Format.size(_data['op_upload'], True)
+            _richs['op_upload'].renderable = Format.size_flow(_data['op_upload'], True)
         else:
             _richs['op_upload'].renderable = Format.yellow('loading')
 

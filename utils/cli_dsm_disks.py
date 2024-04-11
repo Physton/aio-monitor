@@ -21,9 +21,9 @@ def cli_dsm_disks(_configs, _data, _richs, _layout):
                 disk['serial'],
                 Format.size(disk['size_total'], True),
                 Format.hdd_temp(disk['temp'], True) if disk['diskType'] == 'SATA' else Format.temp(disk['temp'], True),
-                Format.size(disk['utilization']['read_byte'], True) if disk['utilization'] else Format.yellow(
+                Format.size_flow(disk['utilization']['read_byte'], True) if disk['utilization'] else Format.yellow(
                     'loading'),
-                Format.size(disk['utilization']['write_byte'], True) if disk['utilization'] else Format.yellow(
+                Format.size_flow(disk['utilization']['write_byte'], True) if disk['utilization'] else Format.yellow(
                     'loading'),
             )
         _layout["DiskList"].update(disks_table)

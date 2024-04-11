@@ -41,8 +41,8 @@ createApp({
                 {title: '连接数', valueKey: 'op_connect_num'},
                 {title: '总下载流量', valueKey: 'op_totaldown', format: this.format_size},
                 {title: '总上传流量', valueKey: 'op_totalup', format: this.format_size},
-                {title: '下载流量', valueKey: 'op_download', format: this.format_size},
-                {title: '上传流量', valueKey: 'op_upload', format: this.format_size},
+                {title: '下载流量', valueKey: 'op_download', format: this.format_size_flow},
+                {title: '上传流量', valueKey: 'op_upload', format: this.format_size_flow},
             ],
         }
     },
@@ -120,8 +120,8 @@ createApp({
                             disk.temp_format = this.format_temp(disk['temp'])
                         }
                         if (disk['utilization']) {
-                            disk.read_byte_format = this.format_size(disk['utilization']['read_byte'])
-                            disk.write_byte_format = this.format_size(disk['utilization']['write_byte'])
+                            disk.read_byte_format = this.format_size_flow(disk['utilization']['read_byte'])
+                            disk.write_byte_format = this.format_size_flow(disk['utilization']['write_byte'])
                         } else {
                             disk.read_byte_format = {color: this.color_yellow, value: 'loading', unit: ''}
                             disk.write_byte_format = {color: this.color_yellow, value: 'loading', unit: ''}
@@ -212,6 +212,32 @@ createApp({
                 result.value = result.value / 1024 / 1024 / 1024
             } else {
                 result.unit = 'TB'
+                result.color = this.color_red
+                result.value = result.value / 1024 / 1024 / 1024 / 1024
+            }
+            result.value = result.value.toFixed(2)
+            return result
+        },
+        format_size_flow(value) {
+            let result = {color: '', value: '', unit: ''}
+            result.value = parseFloat(value)
+            if (result.value < 1024) {
+                result.unit = 'B/s'
+                result.color = this.color_green
+            } else if (result.value < 1024 * 1024) {
+                result.unit = 'KB/s'
+                result.color = this.color_yellow
+                result.value = result.value / 1024
+            } else if (result.value < 1024 * 1024 * 1024) {
+                result.unit = 'MB/s'
+                result.color = this.color_purple
+                result.value = result.value / 1024 / 1024
+            } else if (result.value < 1024 * 1024 * 1024 * 1024) {
+                result.unit = 'GB/s'
+                result.color = this.color_blue
+                result.value = result.value / 1024 / 1024 / 1024
+            } else {
+                result.unit = 'TB/s'
                 result.color = this.color_red
                 result.value = result.value / 1024 / 1024 / 1024 / 1024
             }

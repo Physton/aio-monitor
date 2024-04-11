@@ -82,6 +82,34 @@ class Format:
         return result
 
     @staticmethod
+    def size_flow(size, color=False):
+        if size == 'N/A' or size is None or size == '':
+            return size
+        size = float(size)
+        result = ""
+
+        if size < 1024:
+            color = Format.color_green if color else False
+            result = f"{size} B/s"
+        elif size < 1024 * 1024:
+            color = Format.color_yellow if color else False
+            result = f"{round(size / 1024, 2)} KB/s"
+        elif size < 1024 * 1024 * 1024:
+            color = Format.color_purple if color else False
+            result = f"{round(size / 1024 / 1024, 2)} MB/s"
+        elif size < 1024 * 1024 * 1024 * 1024:
+            color = Format.color_blue if color else False
+            result = f"{round(size / 1024 / 1024 / 1024, 2)} GB/s"
+        else:
+            color = Format.color_red if color else False
+            result = f"{round(size / 1024 / 1024 / 1024 / 1024, 2)} TB/s"
+
+        if color:
+            result = Format.color(result, color)
+
+        return result
+
+    @staticmethod
     def usage(usage, color=False):
         if usage == 'N/A' or usage is None or usage == '':
             return usage
